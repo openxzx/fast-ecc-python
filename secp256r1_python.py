@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import gmpy
 
 def bi(s):
@@ -26,8 +25,8 @@ class Curve:
         self.p = 2**256-2**224+2**192+2**96-1
         self.a = self.p-3
         self.b = 41058363725152142129326129780047268409114441015993725554835256314039467401291
-        gx = bi("6b17d1f2 e12c4247 f8bce6e5 63a440f2 77037d81 2deb33a0 f4a13945 d898c296".replace(" ", "").decode('hex'))
-        gy = bi("4fe342e2 fe1a7f9b 8ee7eb4a 7c0f9e16 2bce3357 6b315ece cbb64068 37bf51f5".replace(" ", "").decode('hex'))
+        gx = int("6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296", 16)
+        gy = int("4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5", 16)
         self.g = [gx,gy]
         self.n = 115792089210356248762697446949407573529996955224135760342422259061068512044369
 
@@ -41,34 +40,33 @@ class Curve:
         return yP**2 % self.p == (pow(xP, 3, self.p) + self.a*xP + self.b) % self.p
 
     def decompress(self,compressed):
-        byte = compressed[0]
+        byte = compressed[:2]
 
         # point at infinity
-        if byte=="\x00":
+        if byte=="00":
             return [None,None]
 
-        xP = bi(compressed[1:])
+        xP = int(compressed[2:], 16)
         ysqr = (pow(xP, 3, self.p) + self.a*xP + self.b) % self.p
         assert self.p % 4 == 3
-        yP = pow(ysqr, (self.p + 1) / 4, self.p)
+        yP = pow(ysqr, (self.p + 1) // 4, self.p)
         assert pow(yP, 2, self.p)==ysqr
         if yP % 2:
-            if byte=="\x03":
+            if byte=="03":
                 return [xP,yP]
             return [xP, -yP % self.p]
-        if byte=="\x02":
+        if byte=="02":
             return [xP,yP]
         return [xP, -yP % self.p]
 
     def compress(self,P):
-
         if P[0] == None:
             return "\x00" + "\x00"*32
 
-        byte = "\x02"
+        byte = "02"
         if P[1] % 2:
-            byte = "\x03"
-        return byte + ib(P[0])
+            byte = "03"
+        return byte + hex(P[0])[2:]
 
     def inv(self,point):
         xP = point[0]
@@ -141,3 +139,6 @@ class Curve:
         return R
 
 curve = Curve()
+compress_pubkey = curve.compress(curve.g)
+print(compress_pubkey)
+print(curve.decompress(compress_pubkey))
